@@ -2,7 +2,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.constants import hbar, physical_constants
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+
 
 
 
