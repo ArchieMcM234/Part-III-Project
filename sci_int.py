@@ -116,11 +116,10 @@ def model(t, psi):
     return -( non_rwa_ham(t)@ psi)* 1j/hbar 
 
 # Initial conditions
-rwa_spin = np.array([1 + 0j, 0 + 0j]) # start in up state
-
+rwa_spin = np.array([1+ 0j, 0 + 0j]) # so this is in the up down basis 1,0  and 0,1
 # Time span for the integration
-t_span = (0, 10**-10)  # From t=0 to t=10
-t_eval = np.linspace(0, 10**-10, 1000)  # Points at which to evaluate the solution
+t_span = (0, 10**-9)  # From t=0 to t=10
+t_eval = np.linspace(0, 10**-9, 1000)  # Points at which to evaluate the solution
 
 # Solve the ODE
 solution = solve_ivp(model, t_span, rwa_spin, t_eval=t_eval) # defaults to runge kutta 4
@@ -167,31 +166,32 @@ plt.show()
 
 
 
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.set_xlim([-1, 1])
-ax.set_ylim([-1, 1])
-ax.set_zlim([-1, 1])
+# fig = plt.figure()
+# ax = fig.add_subplot(111, projection='3d')
+# ax.set_xlim([-1, 1])
+# ax.set_ylim([-1, 1])
+# ax.set_zlim([-1, 1])
 
-# Function to update the Bloch vector
-def update(frame):
-    ax.cla()  # Clear the previous frame
-    ax.set_title("Animated Bloch Vector")
-    ax.set_xlim([-1, 1])
-    ax.set_ylim([-1, 1])
-    ax.set_zlim([-1, 1])
+# # Function to update the Bloch vector
+# def update(frame):
+#     ax.cla()  # Clear the previous frame
+#     ax.set_title("Animated Bloch Vector")
+#     ax.set_xlim([-1, 1])
+#     ax.set_ylim([-1, 1])
+#     ax.set_zlim([-1, 1])
     
 
-    # Plot the Bloch vector
-    ax.quiver(0, 0, 0, x_expectation[frame], y_expectation[frame], z_expectation[frame], 
-              color='r', arrow_length_ratio=0.1)
-    # ax.quiver(0, 0, 0, expectation(Sx, non_rwa_spins[int(frame)]), expectation(Sy, non_rwa_spins[int(frame)]), expectation(Sz, non_rwa_spins[int(frame)]), 
-              # color='g', arrow_length_ratio=0.1)
+#     # Plot the Bloch vector
+#     ax.quiver(0, 0, 0, x_expectation[frame], y_expectation[frame], z_expectation[frame], 
+#               color='r', arrow_length_ratio=0.1)
+#     # ax.quiver(0, 0, 0, expectation(Sx, non_rwa_spins[int(frame)]), expectation(Sy, non_rwa_spins[int(frame)]), expectation(Sz, non_rwa_spins[int(frame)]), 
+#               # color='g', arrow_length_ratio=0.1)
 
 
-# Create the animation
-ani = FuncAnimation(fig, update, frames=np.arange(0, 1000, 1), interval=50)
+# # Create the animation
+# ani = FuncAnimation(fig, update, frames=np.arange(0, 1000, 1), interval=50)
 
+# plt.show()
 # ani.save("Non_RWA.gif", writer='pillow', fps=30)
 
 
@@ -202,4 +202,20 @@ ani = FuncAnimation(fig, update, frames=np.arange(0, 1000, 1), interval=50)
 # following that find the need for the factors of 2?
 # what is rabi chevron - for period should I use scipy stuff?
 
+#######
+z_expectation_1 = []
+for a in range(1000):
+    z_expectation_1.append(solution.y.T[a].conj() @ (Sz @ solution.y.T[a]))
 
+plt.plot(solution.t, z_expectation_1, label='1')
+# plt.plot(solution.t, z_expectation_2, label='2')
+plt.xlabel('Time (s)')
+plt.ylabel('$\\langle\\sigma_z\\rangle$ ')
+plt.title('Rabi Oscillations Electron Spin')
+plt.legend()
+plt.show()
+
+
+
+
+####
