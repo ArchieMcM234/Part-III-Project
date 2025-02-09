@@ -2,7 +2,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.constants import hbar, physical_constants
 import matplotlib.pyplot as plt
-
+from matplotlib.animation import FuncAnimation
 
 
 
@@ -166,32 +166,32 @@ plt.show()
 
 
 
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection='3d')
-# ax.set_xlim([-1, 1])
-# ax.set_ylim([-1, 1])
-# ax.set_zlim([-1, 1])
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.set_xlim([-1, 1])
+ax.set_ylim([-1, 1])
+ax.set_zlim([-1, 1])
 
-# # Function to update the Bloch vector
-# def update(frame):
-#     ax.cla()  # Clear the previous frame
-#     ax.set_title("Animated Bloch Vector")
-#     ax.set_xlim([-1, 1])
-#     ax.set_ylim([-1, 1])
-#     ax.set_zlim([-1, 1])
+# Function to update the Bloch vector
+def update(frame):
+    ax.cla()  # Clear the previous frame
+    ax.set_title("Animated Bloch Vector")
+    ax.set_xlim([-1, 1])
+    ax.set_ylim([-1, 1])
+    ax.set_zlim([-1, 1])
     
 
-#     # Plot the Bloch vector
-#     ax.quiver(0, 0, 0, x_expectation[frame], y_expectation[frame], z_expectation[frame], 
-#               color='r', arrow_length_ratio=0.1)
-#     # ax.quiver(0, 0, 0, expectation(Sx, non_rwa_spins[int(frame)]), expectation(Sy, non_rwa_spins[int(frame)]), expectation(Sz, non_rwa_spins[int(frame)]), 
-#               # color='g', arrow_length_ratio=0.1)
+    # Plot the Bloch vector
+    ax.quiver(0, 0, 0, x_expectation[frame], y_expectation[frame], z_expectation[frame], 
+              color='r', arrow_length_ratio=0.1)
+    # ax.quiver(0, 0, 0, expectation(Sx, non_rwa_spins[int(frame)]), expectation(Sy, non_rwa_spins[int(frame)]), expectation(Sz, non_rwa_spins[int(frame)]), 
+              # color='g', arrow_length_ratio=0.1)
 
 
-# # Create the animation
-# ani = FuncAnimation(fig, update, frames=np.arange(0, 1000, 1), interval=50)
+# Create the animation
+ani = FuncAnimation(fig, update, frames=np.arange(0, 1000, 1), interval=50)
 
-# plt.show()
+plt.show()
 # ani.save("Non_RWA.gif", writer='pillow', fps=30)
 
 
@@ -202,20 +202,3 @@ plt.show()
 # following that find the need for the factors of 2?
 # what is rabi chevron - for period should I use scipy stuff?
 
-#######
-z_expectation_1 = []
-for a in range(1000):
-    z_expectation_1.append(solution.y.T[a].conj() @ (Sz @ solution.y.T[a]))
-
-plt.plot(solution.t, z_expectation_1, label='1')
-# plt.plot(solution.t, z_expectation_2, label='2')
-plt.xlabel('Time (s)')
-plt.ylabel('$\\langle\\sigma_z\\rangle$ ')
-plt.title('Rabi Oscillations Electron Spin')
-plt.legend()
-plt.show()
-
-
-
-
-####

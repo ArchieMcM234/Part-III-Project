@@ -158,7 +158,7 @@ plt.xlabel("Detuning/s^-1")
 plt.ylabel("Time/s")
 plt.title("Z Population vs Time and Omega")
 
-plt.show()
+
 
 
 plt.figure(figsize=(8, 6))
