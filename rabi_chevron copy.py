@@ -70,15 +70,13 @@ B_0= 2
 B_x = 0.2
 
 
-omega_0 = 2*np.pi *18*10**9
+omega_0 = g_s*mu_B*B_0/hbar
 
 omega = omega_0
 
 omega_array = np.linspace(0.5*omega_0, 1.5*omega_0, 100)
 
-rabi_frequency = 2*np.pi*5*10**7
 
-# 2 rabifreq = g_s*mu_B*B_x
 ################################################################################################
 # Integration
 ################################################################################################
@@ -93,14 +91,10 @@ def non_rwa_ham(t, omega):
 
 
 def rwa_ham(t, omega):
-    return  (hbar/2)*np.array([
-        [-(omega_0-omega), rabi_frequency],
-        [rabi_frequency, (omega_0-omega)]
+    return  np.array([
+        [-(hbar/2)*(omega_0-omega), g_s*mu_B*B_x],
+        [g_s*mu_B*B_x, (hbar/2)*(omega_0-omega)]
         ])
-
-# def rwa_ham(t, omega):
-#     return  (hbar/2)*(-(omega_0-omega)*Sz+rabi_frequency*Sx)
-
 
 
 def model(t, psi, omega):
