@@ -108,7 +108,7 @@ second_ham = np.array([
 # then the total hamiltonian is the tensor product of the two - this will be in the comp basis
 # this was incorrect - you get the total by adding the individual hams tensored with identity(inplace of other)
 
-rwa_hamiltonian = np.kron(first_ham, I) + np.kron(I, second_ham) + J *(np.kron(Sx, Sx)+np.kron(Sy, Sy)+np.kron(Sz, Sz)) # so my understaning is that this only works for the tensor prod stuff
+rwa_hamiltonian = np.kron(first_ham, I) + np.kron(I, second_ham) + 0*J *(np.kron(Sx, Sx)+np.kron(Sy, Sy)+np.kron(Sz, Sz)) # so my understaning is that this only works for the tensor prod stuff
 
 
 print((np.kron(Sx, Sx)+np.kron(Sy, Sy)+np.kron(Sz, Sz))-np.kron(I, I))
@@ -118,6 +118,7 @@ print(np.kron(I, I))
 
 def schrodinger_equation(t, psi):
     # I am timesing and dividing by hbar -redundant
+    print(rwa_hamiltonian)
     return -(rwa_hamiltonian @ psi)* 1j/hbar # need to remember to divide by hbar tdse
 
 

@@ -72,11 +72,11 @@ B_x = 0.2
 
 omega_0 = 2*np.pi *18*10**9
 
-omega = omega_0
 
-omega_array = np.linspace(0.5*omega_0, 1.5*omega_0, 100)
 
-rabi_frequency = 2*np.pi*5*10**7
+omega_array = np.linspace(omega_0*0.999, omega_0*1.001, 100)
+
+Rabi = 2*np.pi*5*10**6
 
 # 2 rabifreq = g_s*mu_B*B_x
 ################################################################################################
@@ -92,20 +92,26 @@ def non_rwa_ham(t, omega):
 
 
 
-def rwa_ham(t, omega):
-    return  (hbar/2)*np.array([
-        [-(omega_0-omega), rabi_frequency],
-        [rabi_frequency, (omega_0-omega)]
-        ])
+# def rwa_ham(t, omega):
+#     return  (hbar/2)*np.array([
+#         [-(omega_0-omega), rabi_frequency],
+#         [rabi_frequency, (omega_0-omega)]
+#         ])
 
 # def rwa_ham(t, omega):
 #     return  (hbar/2)*(-(omega_0-omega)*Sz+rabi_frequency*Sx)
 
+def rwa_ham(t, omega):
+    return (hbar/2)* np.array([
+        [-(omega_0-omega), Rabi],
+        [Rabi, (omega_0-omega)]
+        ])
+
 
 
 def model(t, psi, omega):
-
-    return -(rwa_ham(t, omega)@ psi)* 1j/hbar # need to remember to divide by hbar tdse
+    # returns dpsi/dt from TDSE
+    return -( rwa_ham(t, omega)@ psi)* 1j/hbar 
 
 # Initial conditions
 basis_state_1 = np.array([1 + 0j, 0 + 0j])
@@ -113,8 +119,8 @@ basis_state_2 = np.array([0 + 0j, 1 + 0j])
 
 # Time span for the integration
 num_steps = 1000
-t_span = (0, 10**-9)  # From t=0 to t=10
-t_eval = np.linspace(0, 10**-9, num_steps)  # Points at which to evaluate the solution
+t_span = (0, 10**-6)  # From t=0 to t=10
+t_eval = np.linspace(0, 10**-6, num_steps)  # Points at which to evaluate the solution
 
 # Solve the ODE
 
@@ -126,7 +132,6 @@ fidelity_matrix = []
 
 
 for omega in omega_array:
-
     ham_base_1 = solve_ivp(model, t_span, basis_state_1, t_eval=t_eval, args=(omega,)) 
     ham_base_2 = solve_ivp(model, t_span, basis_state_2, t_eval=t_eval, args=(omega,)) 
 
