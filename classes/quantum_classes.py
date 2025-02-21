@@ -8,6 +8,7 @@ from matplotlib.animation import FuncAnimation
 from functools import reduce
 
 from pauli_matrices import *
+from IPython.display import HTML
 
 
 
@@ -52,7 +53,7 @@ def calculate_expectations(states, obervable):
     expectations = []
     for state in states:
         expectations.append(state.conj() @ obervable @ state)
-    return np.array(expectations)
+    return np.real(np.array(expectations))
 
 
 def kron_multiple_arrays(array_list):
@@ -263,25 +264,26 @@ class Quantum_System:
         
         return rotated_solution
     
-
-    def visualise_solution(self, t, y):
+    def visualise_solution(self, t, y, static_vector=None):
         """
         Visualize the solution of the quantum system on a Bloch sphere.
         
         Parameters:
         - t (array): Time points at which the solution is evaluated.
         - y (array): Solution array with shape (num_points, 2**num_qubits).
+        - static_vector (array, optional): Static vector to display for all time steps.
         """
         # Calculate expectations
-        x_expectation = calculate_expectations(y, sigma_x)
-        y_expectation = calculate_expectations(y, sigma_y)
-        z_expectation = calculate_expectations(y, sigma_z)
+        x_expectation = np.real(calculate_expectations(y, sigma_x))
+        y_expectation = np.real(calculate_expectations(y, sigma_y))
+        z_expectation = np.real(calculate_expectations(y, sigma_z))
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.set_xlim([-1, 1])
         ax.set_ylim([-1, 1])
         ax.set_zlim([-1, 1])
+        ax.set_box_aspect([1, 1, 1])  # Equal aspect ratio
 
         # Function to update the Bloch vector
         def update(frame):
@@ -290,19 +292,24 @@ class Quantum_System:
             ax.set_xlim([-1, 1])
             ax.set_ylim([-1, 1])
             ax.set_zlim([-1, 1])
+            ax.set_box_aspect([1, 1, 1])  # Equal aspect ratio
 
             # Plot the Bloch vector
             ax.quiver(0, 0, 0, x_expectation[frame], y_expectation[frame], z_expectation[frame], 
                       color='r', arrow_length_ratio=0.1)
+            
+            # Plot the static vector if provided
+            if static_vector is not None:
+                ax.quiver(0, 0, 0, static_vector[0], static_vector[1], static_vector[2], 
+                          color='b', arrow_length_ratio=0.1)
 
         # Create the animation
         ani = FuncAnimation(fig, update, frames=np.arange(0, len(t), 1), interval=50)
 
-        plt.show()
-        # ani.save("Bloch_Vector.gif", writer='pillow', fps=30)
-
-
-
+        # close the figure
+        plt.close(fig)
+        
+        return HTML(ani.to_jshtml())
 
 
 
