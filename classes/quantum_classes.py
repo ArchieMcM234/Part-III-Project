@@ -73,6 +73,8 @@ def kron_multiple_arrays(array_list):
 
 class Quantum_Hamiltonian:
     # my convention is to have freq and omega for Hz and rads respectively
+
+    #!!!!!!! to make more efficient - pre calcuate the omegas!!!!!!!!
     def __init__(self, rabi_freq, num_qubits, natural_freqs):
 
         self.rabi_omega = 2*np.pi*rabi_freq  # Rabi frequency
@@ -109,7 +111,7 @@ class Quantum_Hamiltonian:
         driving_omega = 2 * np.pi * driving_freq
         phase_omega = 2 * np.pi * phase_freq
 
-        delta = self.natural_omegas[0] - driving_omega
+        delta = driving_omega - self.natural_omegas[0]
         cos_phi_0 = np.cos(phi_0)
         sin_phi_0 = np.sin(phi_0)
         cos_phase = epsilon_m * (phase_omega / self.rabi_omega) * np.cos(phase_omega * t - theta_m)
@@ -117,20 +119,60 @@ class Quantum_Hamiltonian:
         H = - (delta / 2) * sigma_z + (self.rabi_omega / 2) * (cos_phi_0 * sigma_x + sin_phi_0 * sigma_y) +cos_phase * sigma_z
             
         return H
-
-    def ccd_non_rwa(self, phi_0, epsilon_m, phase_freq, theta_m, t, driving_freq):
+    def ccd_lab(self, phi_0, epsilon_m, phase_freq, theta_m, t, driving_freq):
         """
         Time-dependent Hamiltonian in the non-rotating wave approximation (non-RWA) for CCD.
+        
+        Parameters:
+        - phi_0 (float): Initial phase in radians.
+        - epsilon_m (float): Modulation amplitude (dimensionless).
+        - phase_freq (float): Phase modulation frequency in Hz.
+        - theta_m (float): Phase modulation angle in radians.
+        - t (float): Time in seconds.
+        - driving_freq (float): Driving frequency in Hz.
+        
+        Returns:
+        - np.array: Hamiltonian matrix at time t.
         """
         driving_omega = 2 * np.pi * driving_freq
         phase_omega = 2 * np.pi * phase_freq
 
-        delta = self.natural_omegas[0] - driving_omega # this definition is the opposite
+
         cos_term = np.cos(driving_omega * t + phi_0 - (2 * epsilon_m / self.rabi_omega) * np.sin(phase_omega * t - theta_m))
         
-        H = (delta / 2) * sigma_z + self.rabi_omega * cos_term * sigma_x
+        H = (self.natural_omegas[0] / 2) * sigma_z + self.rabi_omega * cos_term * sigma_x
             
         return H
+
+    def smart_lab(self, t, driving_freq, modulation_freq):
+        """
+        Time-dependent Hamiltonian in the lab frame for sinusoidal modulation.
+        """
+        modulation_omega = modulation_freq * 2 * np.pi
+        driving_omega = driving_freq * 2 * np.pi
+
+        H = (1/2) * (self.natural_omegas[0] * sigma_z + 
+                        self.rabi_omega * np.sqrt(2) * np.sin(modulation_omega * t) * 
+                        2 * np.cos(driving_omega * t) * sigma_x)
+
+        return H
+
+    def smart_rwa(self, t, driving_freq, modulation_freq):
+        """
+        Time-independent Hamiltonian in the rotating wave approximation (RWA) for a sinusoidal modulation.
+        """
+        driving_omega = driving_freq * 2 * np.pi
+        modulation_omega = modulation_freq * 2 * np.pi
+
+        delta = driving_omega - self.natural_omegas[0]
+        H = (1/2) * (delta * sigma_z + self.rabi_omega * np.sqrt(2) * np.sin(modulation_omega * t) * sigma_x)
+
+
+        return H
+
+    def smart_dressed_rwa():
+        # TODO
+        pass
 
 
 # Im gonna think that this is permanent stuff - may be better to split up but press on
@@ -155,20 +197,22 @@ class Quantum_System:
         basis_state[0] = 1.0  # Ground state |0...0>
         return basis_state
     
-    def evolve_state(self, initial_state, time, num_points, ham_type="rwa", **kwargs):
+    def evolve_state(self, initial_state, time, num_points, ham_type="rwa", rtol=1e-7, atol=1e-7, **kwargs):
         """
         Evolve the system using the time-dependent Schrödinger equation.
         
         Parameters:
-        - t_span (tuple): Time range for the evolution (start, end).
-        - t_eval (array): Time points at which to evaluate the solution.
-        - omega (float): Driving frequency.
-        - ham_type (str): Type of Hamiltonian to use ("rwa", "non_rwa", "custom").
+        - initial_state (np.array): Initial state vector
+        - time (float): Total evolution time
+        - num_points (int): Number of time points to evaluate
+        - ham_type (str): Type of Hamiltonian to use ("rwa", "idle", "ccd_rwa")
+        - rtol (float): Relative tolerance for the solver (default: 1e-7)
+        - atol (float): Absolute tolerance for the solver (default: 1e-7)
+        - **kwargs: Additional parameters passed to the Hamiltonian
         
-        Updates the system's state after evolution.
+        Returns:
+        - tuple: (t, y) Time points and evolved state vectors
         """
-
-
         def tdse(t, psi):
             if ham_type == "rwa":
                 H = self.hamiltonian.rwa(kwargs['driving_freq']*2*np.pi)
@@ -176,20 +220,27 @@ class Quantum_System:
                 H = self.hamiltonian.idle()
             elif ham_type == "ccd_rwa":
                 H = self.hamiltonian.ccd_rwa(**kwargs, t=t)
+            elif ham_type == "ccd_lab":  
+                H = self.hamiltonian.ccd_lab(**kwargs, t=t)
+            elif ham_type == "smart_lab":
+                H = self.hamiltonian.smart_lab(t, **kwargs)
+            elif ham_type == "smart_rwa":
+                H = self.hamiltonian.smart_rwa(t, **kwargs) 
             else:
                 raise ValueError("Unknown Hamiltonian type.")
             return -1j * (H @ psi)
-        
 
-        t_span = (0, time)  # From t=0 to t=10
-        t_eval = np.linspace(0, time, num_points)  # Points at which to evaluate the solution
+        t_span = (0, time)
+        t_eval = np.linspace(0, time, num_points)
 
+        # Solver with specified tolerances
+        sol = solve_ivp(tdse, t_span, initial_state, 
+                        t_eval=t_eval, 
+                        method='RK45',  # You can also specify the method
+                        rtol=rtol, 
+                        atol=atol)
 
-        # !!!! want to add tolerances to this !!!!!
-        sol = solve_ivp(tdse, t_span, initial_state, t_eval=t_eval )
-
-
-        return sol.t, sol.y.T  # Return the full evolution for analysis
+        return sol.t, sol.y.T
 
     def find_total_hamiltonians(self, time, num_points, ham_type="rwa", **kwargs):
 
