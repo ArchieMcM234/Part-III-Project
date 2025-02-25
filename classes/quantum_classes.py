@@ -26,6 +26,8 @@ def calculate_fidelitys(U_ideal, U_array, d):
     Returns:
     float: Fidelity value between 0 and 1.
     """
+    #!!!!! is the correct - do we acc need to use the race or just the inner product?? - ig that as it is a matrix not a state then we need the trace???!!!!!!
+
     # Compute the trace of the product of U_ideal^dagger and U
     fidelities = []
     for hamiltonian in U_array:
@@ -81,6 +83,7 @@ class Quantum_Hamiltonian:
         self.num_qubits = num_qubits
         self.natural_omegas = 2*np.pi*natural_freqs
 
+
     def non_rwa(self):
         # TODO
         pass
@@ -99,8 +102,8 @@ class Quantum_Hamiltonian:
             [-(self.natural_omegas[a] - driving_omega), self.rabi_omega],
             [self.rabi_omega, self.natural_omegas[a] - driving_omega]])
 
-            array_list = [identity for b in range(a)] +[single_hamiltonian]+[identity for b in range(a, self.num_qubits-1)]
-            H+= kron_multiple_arrays(array_list)
+            array_list = [identity for b in range(a)] + [single_hamiltonian] + [identity for b in range(self.num_qubits-a-1)]
+            H += kron_multiple_arrays(array_list)
 
         return H
 
@@ -143,7 +146,56 @@ class Quantum_Hamiltonian:
         H = (self.natural_omegas[0] / 2) * sigma_z + self.rabi_omega * cos_term * sigma_x
             
         return H
+    
+    def ccd_lab_multiple(self, phi_0, epsilon_m, phase_freq, theta_m, t, driving_freq):
+        """
+        Time-dependent Hamiltonian in the non-rotating wave approximation (non-RWA) for CCD.
+        
+        Parameters:
+        - phi_0 (float): Initial phase in radians.
+        - epsilon_m (float): Modulation amplitude (dimensionless).
+        - phase_freq (float): Phase modulation frequency in Hz.
+        - theta_m (float): Phase modulation angle in radians.
+        - t (float): Time in seconds.
+        - driving_freq (float): Driving frequency in Hz.
+        
+        Returns:
+        - np.array: Hamiltonian matrix at time t.
+        """ 
+        driving_omega = 2 * np.pi * driving_freq
+        phase_omega = 2 * np.pi * phase_freq
 
+        H = np.zeros((2**self.num_qubits, 2**self.num_qubits), dtype=complex)
+        for a in range(self.num_qubits):
+            cos_term = np.cos(driving_omega * t + phi_0 - (2 * epsilon_m / self.rabi_omega) * np.sin(phase_omega * t - theta_m))
+            single_hamiltonian = (self.natural_omegas[0] / 2) * sigma_z + self.rabi_omega * cos_term * sigma_x
+            array_list = [identity for b in range(a)] + [single_hamiltonian] + [identity for b in range(a, self.num_qubits-1)]
+            H += kron_multiple_arrays(array_list)    
+        return H
+
+    def ccd_rwa_multiple(self, phi_0, epsilon_m, phase_freq, theta_m, t, driving_freq):
+        """
+        Time-independent Hamiltonian in the rotating wave approximation (RWA) for CCD.
+        """
+        driving_omega = 2 * np.pi * driving_freq
+        phase_omega = 2 * np.pi * phase_freq
+
+        
+        cos_phi_0 = np.cos(phi_0)
+        sin_phi_0 = np.sin(phi_0)
+        cos_phase = epsilon_m * (phase_omega / self.rabi_omega) * np.cos(phase_omega * t - theta_m)
+       
+
+        H = np.zeros((2**self.num_qubits, 2**self.num_qubits), dtype=complex)
+        for a in range(self.num_qubits):
+            delta = driving_omega - self.natural_omegas[0]
+
+            single_hamiltonian = - (delta / 2) * sigma_z + (self.rabi_omega / 2) * (cos_phi_0 * sigma_x + sin_phi_0 * sigma_y) +cos_phase * sigma_z
+            array_list = [identity for b in range(a)] + [single_hamiltonian] + [identity for b in range(a, self.num_qubits-1)]
+            H += kron_multiple_arrays(array_list)    
+        return H
+
+        return H
     def smart_lab(self, t, driving_freq, modulation_freq):
         """
         Time-dependent Hamiltonian in the lab frame for sinusoidal modulation.
@@ -222,6 +274,10 @@ class Quantum_System:
                 H = self.hamiltonian.ccd_rwa(**kwargs, t=t)
             elif ham_type == "ccd_lab":  
                 H = self.hamiltonian.ccd_lab(**kwargs, t=t)
+            elif ham_type == "ccd_lab_multiple":
+                H = self.hamiltonian.ccd_lab_multiple(**kwargs, t=t)
+            elif ham_type == "ccd_rwa_multiple":
+                H = self.hamiltonian.ccd_rwa_multiple(**kwargs, t=t)
             elif ham_type == "smart_lab":
                 H = self.hamiltonian.smart_lab(t, **kwargs)
             elif ham_type == "smart_rwa":
