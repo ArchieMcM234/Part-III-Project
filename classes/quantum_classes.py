@@ -111,8 +111,15 @@ class Quantum_Hamiltonian:
         """
         Time-independent Hamiltonian in the rotating wave approximation (RWA) for CCD.
         """
+
+
         driving_omega = 2 * np.pi * driving_freq
         phase_omega = 2 * np.pi * phase_freq
+
+        #!!! is this the correct way of definining epsilon??!!!!
+        epsilon_m = epsilon_m*2*np.pi
+        # !!!!!!!!!!!!!!!!!
+
 
         delta = driving_omega - self.natural_omegas[0]
         cos_phi_0 = np.cos(phi_0)
@@ -147,7 +154,7 @@ class Quantum_Hamiltonian:
             
         return H
     
-    def ccd_lab_multiple(self, phi_0, epsilon_m, phase_freq, theta_m, t, driving_freq):
+    def ccd_lab_multiple(self, phi_0, epsilon_m, phase_freq, theta_m, t, driving_freq, coupling):
         """
         Time-dependent Hamiltonian in the non-rotating wave approximation (non-RWA) for CCD.
         
@@ -171,9 +178,9 @@ class Quantum_Hamiltonian:
             single_hamiltonian = (self.natural_omegas[0] / 2) * sigma_z + self.rabi_omega * cos_term * sigma_x
             array_list = [identity for b in range(a)] + [single_hamiltonian] + [identity for b in range(a, self.num_qubits-1)]
             H += kron_multiple_arrays(array_list)    
-        return H
+        return H + coupling *(np.kron(sigma_x, sigma_x)+np.kron(sigma_y, sigma_y)+np.kron(sigma_z, sigma_z))
 
-    def ccd_rwa_multiple(self, phi_0, epsilon_m, phase_freq, theta_m, t, driving_freq):
+    def ccd_rwa_multiple(self, phi_0, epsilon_m, phase_freq, theta_m, t, driving_freq, coupling):
         """
         Time-independent Hamiltonian in the rotating wave approximation (RWA) for CCD.
         """
@@ -193,9 +200,9 @@ class Quantum_Hamiltonian:
             single_hamiltonian = - (delta / 2) * sigma_z + (self.rabi_omega / 2) * (cos_phi_0 * sigma_x + sin_phi_0 * sigma_y) +cos_phase * sigma_z
             array_list = [identity for b in range(a)] + [single_hamiltonian] + [identity for b in range(a, self.num_qubits-1)]
             H += kron_multiple_arrays(array_list)    
-        return H
+        return H + coupling *(np.kron(sigma_x, sigma_x)+np.kron(sigma_y, sigma_y)+np.kron(sigma_z, sigma_z))
 
-        return H
+
     def smart_lab(self, t, driving_freq, modulation_freq):
         """
         Time-dependent Hamiltonian in the lab frame for sinusoidal modulation.
@@ -417,9 +424,59 @@ class Quantum_System:
         plt.close(fig)
         
         return HTML(ani.to_jshtml())
+    
 
+    # Multithreading Partials
+    
+    def evolve_for_frequency_smart(self, freq, initial_state, evaluation_time, evaluation_points, modulation_freq):
+        """
+        Helper function to evolve system for a single frequency
+        
+        Parameters:
+        - freq (float): Driving frequency
+        - initial_state (np.array): Initial quantum state
+        - evaluation_time (float): Total evolution time
+        - evaluation_points (int): Number of time points
+        - modulation_freq (float): Modulation frequency
+        
+        Returns:
+        - np.array: Z-expectation values
+        """
+        t, y_rwa = self.evolve_state(initial_state, 
+                                    evaluation_time, 
+                                    evaluation_points,
+                                    ham_type='smart_rwa',
+                                    driving_freq=freq,
+                                    modulation_freq=modulation_freq)
+        return np.real(calculate_z_expectation(y_rwa))
 
-
+    def evolve_freq_ccd(self, freq, initial_state, evaluation_time, evaluation_points, epsilon_m, phase_freq, theta_m, phi_0):
+        """
+        Helper function to evolve system for a single frequency using CCD RWA
+        
+        Parameters:
+        - freq (float): Driving frequency 
+        - initial_state (np.array): Initial quantum state
+        - evaluation_time (float): Total evolution time
+        - evaluation_points (int): Number of time points
+        - epsilon_m (float): Modulation amplitude
+        - phase_freq (float): Phase modulation frequency
+        - theta_m (float): Phase modulation angle
+        - phi_0 (float): Initial phase
+        
+        Returns:
+        - np.array: Z-expectation values
+        """
+        t, y_rwa = self.evolve_state(initial_state,
+                                    evaluation_time,
+                                    evaluation_points, 
+                                    ham_type='ccd_rwa',
+                                    driving_freq=freq,
+                                    epsilon_m=epsilon_m,
+                                    phase_freq=phase_freq,
+                                    theta_m=theta_m,
+                                    phi_0=phi_0)
+        return np.real(calculate_z_expectation(y_rwa))
 
 
 
