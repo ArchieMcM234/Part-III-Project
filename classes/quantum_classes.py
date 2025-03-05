@@ -305,7 +305,7 @@ class Quantum_System:
 
         return sol.t, sol.y.T
 
-    def find_total_hamiltonians(self, time, num_points, ham_type="rwa", **kwargs):
+    def find_total_hamiltonian(self, time, num_points, ham_type="rwa", **kwargs):
 
         total_hamiltonian = []
         
@@ -321,7 +321,26 @@ class Quantum_System:
         # Stack all the evolved states for each basis state along the second axis
         # Result will be (num_points, 2**num_qubits)
         return t, np.stack(total_hamiltonian, axis=1)
+    
+    def find_total_hamiltonian_multi(self, time, num_points, ham_type="rwa", **kwargs):
+        """
+        Multithreaded version of find_total_hamiltonian using multiprocessing
+        """
+        def evolve_basis_state(initial_state_index):
+            initial_state = np.zeros(2**self.num_qubits, dtype=complex)
+            initial_state[initial_state_index] = 1
+            t, y = self.evolve_state(initial_state, time, num_points, ham_type=ham_type, **kwargs)
+            return y
 
+        # Create a pool of worker processes
+        with mp.Pool() as pool:
+            # Map the function across all basis states
+            total_hamiltonian = pool.map(evolve_basis_state, range(2**self.num_qubits))
+
+        # Get time points from a single evolution (they're the same for all)
+        t, _ = self.evolve_state(np.zeros(2**self.num_qubits, dtype=complex), time, num_points, ham_type=ham_type, **kwargs)
+        
+        return t, np.stack(total_hamiltonian, axis=1)
     
     def expectation(self, observable):
         """
