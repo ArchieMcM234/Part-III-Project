@@ -13,7 +13,6 @@ from IPython.display import HTML
 
 
 
-
 def calculate_fidelitys(U_ideal, U_array, d):
     """
     Calculate the fidelity between two unitaries U_ideal and U.
@@ -29,14 +28,16 @@ def calculate_fidelitys(U_ideal, U_array, d):
     #!!!!! is the correct - do we acc need to use the race or just the inner product?? - ig that as it is a matrix not a state then we need the trace???!!!!!!
 
     # Compute the trace of the product of U_ideal^dagger and U
+    # should this also be in the system class - uses d?
+
     fidelities = []
-    for hamiltonian in U_array:
-        trace_term = np.trace(np.dot(U_ideal.conj().T, hamiltonian))
+    for U in U_array:
+        trace_term = np.trace(np.dot(U_ideal.conj().T, U))
     
         # Fidelity formula
         fidelities.append((np.abs(trace_term)**2 + d) / (d * (d + 1)))
     
-    return fidelities
+    return np.real(np.array(fidelities))
 
 
 def calculate_z_expectation(states):
@@ -107,7 +108,7 @@ class Quantum_Hamiltonian:
 
         return H
 
-    def ccd_rwa(self, phi_0, epsilon_m, phase_freq, theta_m, t, driving_freq):
+    def ccd_rwa(self, phi_0, epsilon_m, phase_freq, theta_m, t, driving_freq, natural_freq = None):
         """
         Time-independent Hamiltonian in the rotating wave approximation (RWA) for CCD.
         """
@@ -116,12 +117,15 @@ class Quantum_Hamiltonian:
         driving_omega = 2 * np.pi * driving_freq
         phase_omega = 2 * np.pi * phase_freq
 
-        #!!! is this the correct way of definining epsilon??!!!!
+
         epsilon_m = epsilon_m*2*np.pi
-        # !!!!!!!!!!!!!!!!!
 
+        if natural_freq is None:
+            natural_omega = self.natural_omegas[0]
+        else:
+            natural_omega = 2*np.pi*natural_freq
 
-        delta = driving_omega - self.natural_omegas[0]
+        delta = driving_omega - natural_omega
         cos_phi_0 = np.cos(phi_0)
         sin_phi_0 = np.sin(phi_0)
         cos_phase = epsilon_m * (phase_omega / self.rabi_omega) * np.cos(phase_omega * t - theta_m)
@@ -146,7 +150,8 @@ class Quantum_Hamiltonian:
         """
         driving_omega = 2 * np.pi * driving_freq
         phase_omega = 2 * np.pi * phase_freq
-
+        natural_freq = 2 * np.pi * natural_freq
+        epsilon_m = epsilon_m*2*np.pi
 
         cos_term = np.cos(driving_omega * t + phi_0 - (2 * epsilon_m / self.rabi_omega) * np.sin(phase_omega * t - theta_m))
         
@@ -171,6 +176,7 @@ class Quantum_Hamiltonian:
         """ 
         driving_omega = 2 * np.pi * driving_freq
         phase_omega = 2 * np.pi * phase_freq
+        epsilon_m = 2*np.pi*epsilon_m
 
         H = np.zeros((2**self.num_qubits, 2**self.num_qubits), dtype=complex)
         for a in range(self.num_qubits):
@@ -180,13 +186,13 @@ class Quantum_Hamiltonian:
             H += kron_multiple_arrays(array_list)    
         return H + coupling *(np.kron(sigma_x, sigma_x)+np.kron(sigma_y, sigma_y)+np.kron(sigma_z, sigma_z))
 
-    def ccd_rwa_multiple(self, phi_0, epsilon_m, phase_freq, theta_m, t, driving_freq, coupling):
+    def ccd_rwa_multiple(self, natural_freqs, phi_0, epsilon_m, phase_freq, theta_m, t, driving_freq, coupling):
         """
         Time-independent Hamiltonian in the rotating wave approximation (RWA) for CCD.
         """
         driving_omega = 2 * np.pi * driving_freq
         phase_omega = 2 * np.pi * phase_freq
-
+        epsilon_m = 2*np.pi*epsilon_m
         
         cos_phi_0 = np.cos(phi_0)
         sin_phi_0 = np.sin(phi_0)
@@ -195,7 +201,7 @@ class Quantum_Hamiltonian:
 
         H = np.zeros((2**self.num_qubits, 2**self.num_qubits), dtype=complex)
         for a in range(self.num_qubits):
-            delta = driving_omega - self.natural_omegas[0]
+            delta = driving_omega - 2*np.pi*natural_freqs[a]
 
             single_hamiltonian = - (delta / 2) * sigma_z + (self.rabi_omega / 2) * (cos_phi_0 * sigma_x + sin_phi_0 * sigma_y) +cos_phase * sigma_z
             array_list = [identity for b in range(a)] + [single_hamiltonian] + [identity for b in range(a, self.num_qubits-1)]
@@ -305,42 +311,25 @@ class Quantum_System:
 
         return sol.t, sol.y.T
 
-    def find_total_hamiltonian(self, time, num_points, ham_type="rwa", **kwargs):
+    def calculate_unitaries(self, time, num_points, **kwargs):
+        # this could/should be done in parallel
 
-        total_hamiltonian = []
+
+        total_Us = []
         
         for initial_state_index in range(2**self.num_qubits):
             initial_state = np.zeros(2**self.num_qubits, dtype=complex)
             initial_state[initial_state_index] = 1  # Initialize basis state
             
-            t, y = self.evolve_state(initial_state, time, num_points, ham_type=ham_type, **kwargs)
+            t, y = self.evolve_state(initial_state, time, num_points, **kwargs)
             
             # Now we stack the evolved states for all basis states at each time step
-            total_hamiltonian.append(y)
+            total_Us.append(y)
 
         # Stack all the evolved states for each basis state along the second axis
         # Result will be (num_points, 2**num_qubits)
-        return t, np.stack(total_hamiltonian, axis=1)
+        return t, np.stack(total_Us, axis=1)
     
-    def find_total_hamiltonian_multi(self, time, num_points, ham_type="rwa", **kwargs):
-        """
-        Multithreaded version of find_total_hamiltonian using multiprocessing
-        """
-        def evolve_basis_state(initial_state_index):
-            initial_state = np.zeros(2**self.num_qubits, dtype=complex)
-            initial_state[initial_state_index] = 1
-            t, y = self.evolve_state(initial_state, time, num_points, ham_type=ham_type, **kwargs)
-            return y
-
-        # Create a pool of worker processes
-        with mp.Pool() as pool:
-            # Map the function across all basis states
-            total_hamiltonian = pool.map(evolve_basis_state, range(2**self.num_qubits))
-
-        # Get time points from a single evolution (they're the same for all)
-        t, _ = self.evolve_state(np.zeros(2**self.num_qubits, dtype=complex), time, num_points, ham_type=ham_type, **kwargs)
-        
-        return t, np.stack(total_hamiltonian, axis=1)
     
     def expectation(self, observable):
         """
@@ -445,7 +434,7 @@ class Quantum_System:
         return HTML(ani.to_jshtml())
     
 
-    # Multithreading Partials
+    # Multithreading Partials !!! i wanna eliminate these I think
     
     def evolve_for_frequency_smart(self, freq, initial_state, evaluation_time, evaluation_points, modulation_freq):
         """
@@ -497,10 +486,30 @@ class Quantum_System:
                                     phi_0=phi_0)
         return np.real(calculate_z_expectation(y_rwa))
 
-
-
-
-
+    def fid_freq_ccd(self, freq, initial_state, evaluation_time, evaluation_points, epsilon_m, phase_freq, theta_m, phi_0):
+        """
+        Helper function to evolve system for a single frequency using CCD RWA
+        
+        Parameters:
+        - freq (float): Driving frequency 
+        - initial_state (np.array): Initial quantum state
+        - evaluation_time (float): Total evolution time
+        - evaluation_points (int): Number of time points
+        - epsilon_m (float): Modulation amplitude
+        - phase_freq (float): Phase modulation frequency
+        - theta_m (float): Phase modulation angle
+        - phi_0 (float): Initial phase
+        
+        Returns:
+        - np.array: Z-expectation values
+        """
+        t, Us=  self.calculate_unitaries(evaluation_time, evaluation_points, ham_type='ccd_rwa',
+                        driving_freq=freq,
+                        phi_0=phi_0,
+                        epsilon_m=epsilon_m,
+                        phase_freq=phase_freq,
+                        theta_m=theta_m)
+        return np.real(calculate_fidelitys(np.eye(2), Us, 2))
 
 
 
