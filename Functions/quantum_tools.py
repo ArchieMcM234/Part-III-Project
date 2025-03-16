@@ -146,6 +146,26 @@ def rotate_system(t, states, theta_func, axis_func):
     
     return rotated_solution
 
+def rotate_unitary(t, U, R_func):
+    """
+    Transform unitary operators using a time-dependent rotation matrix.
+    
+    Parameters:
+    - t (array): Time points
+    - U (array): Unitary operators (shape: num_points x state_dimension x state_dimension)
+    - R_func (callable): Function returning rotation matrix at time t
+    
+    Returns:
+    - array: Transformed unitary operators
+    """
+    transformed_U = np.zeros_like(U, dtype=complex)
+
+    for i in range(len(t)):
+        R = R_func(t[i])  # Get the rotation matrix at time t[i]
+        transformed_U[i] = R @ U[i] @ R.conj().T  # Basis transformation
+
+    return transformed_U
+
 def visualise_solution(t, y, static_vector=None):
     """
     Visualize quantum states on the Bloch sphere.
