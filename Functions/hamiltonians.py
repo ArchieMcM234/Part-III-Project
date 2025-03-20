@@ -14,15 +14,59 @@ def kron_multiple_arrays(array_list):
 
 
 
-def idle(t):
+def idle(t): ## this is in the qubit frame  
     """Return idle Hamiltonian"""
     return np.zeros((2, 2))
 
-def rwa(natural_freqs, rabi_freq, driving_freq, num_qubits, t):
+def no_drive(natural_frequent, t):
+    """Return Hamiltonian for a single qubit with no driving"""
+    natural_omega = hz_to_radians(natural_frequent)
+    H = (natural_omega / 2) * sigma_z
+    return H
+
+
+def rabi_lab(natural_freq, rabi_freq, driving_freq, t):
+    """
+    Time-independent Hamiltonian for a single qubit in the Rabi driving regime.
+    All frequencies should be in Hz.
+    """
+    # Convert frequencies to angular frequencies (radians per second)
+    natural_omega = hz_to_radians(natural_freq)
+    rabi_omega = hz_to_radians(rabi_freq)
+    driving_omega = hz_to_radians(driving_freq)
+    
+
+    
+    # Hamiltonian components
+    H = -(natural_omega)/2 * sigma_z + (rabi_omega) * np.cos(driving_omega * t) * sigma_x
+    
+    return H
+
+def rabi_rwa(natural_freq, rabi_freq, driving_freq, t):
+    """
+    Time-independent Hamiltonian for a single qubit in the rotating frame under Rabi driving.
+    All frequencies should be in Hz.
+    """
+    # Convert frequencies to angular frequencies (radians per second)
+    natural_omega = hz_to_radians(natural_freq)
+    rabi_omega = hz_to_radians(rabi_freq)
+    driving_omega = hz_to_radians(driving_freq)
+    
+    # Calculate detuning between driving and natural frequency
+    delta = driving_omega - natural_omega
+    
+    # Rotating frame transformation (considering rotating at the driving frequency)
+    # In the rotating frame, we effectively remove the time-dependent terms in the Hamiltonian
+    H_rot = -(delta / 2) * sigma_z + (rabi_omega/2) * sigma_x
+    
+    return H_rot
+
+def rwa_multiple(natural_freqs, rabi_freq, driving_freq, t):
     """
     Time-independent Hamiltonian in the rotating wave approximation (RWA).
     All frequencies should be in Hz.
     """
+    num_qubits = len(natural_freqs)
     natural_omegas = hz_to_radians(natural_freqs)
     rabi_omega = hz_to_radians(rabi_freq)
     driving_omega = hz_to_radians(driving_freq)

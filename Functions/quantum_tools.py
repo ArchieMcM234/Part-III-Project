@@ -12,21 +12,31 @@ from IPython.display import HTML
 
 
 
+# def calculate_fidelities(U_ideal, U_array, d):
+#     # Compute the conjugate transpose of the ideal unitary
+#     U_ideal_dag = U_ideal.conj().T
+    
+#     # Batch matrix multiplication of U_ideal_dag with each matrix in U_array
+#     product = np.matmul(U_ideal_dag, U_array)
+
+    
+#     # Compute the trace for each matrix in the batch result
+#     trace_terms = np.trace(product, axis1=1, axis2=2)
+    
+#     # Calculate fidelity using vectorized operations
+#     fidelities = (np.abs(trace_terms)**2 + d) / (d * (d + 1))
+    
+#     # Return the real parts to handle any negligible imaginary components
+#     return np.real(fidelities)
+
 def calculate_fidelities(U_ideal, U_array, d):
-    # Compute the conjugate transpose of the ideal unitary
-    U_ideal_dag = U_ideal.conj().T
-    
-    # Batch matrix multiplication of U_ideal_dag with each matrix in U_array
-    product = np.matmul(U_ideal_dag, U_array)
-    
-    # Compute the trace for each matrix in the batch result
-    trace_terms = np.trace(product, axis1=1, axis2=2)
-    
-    # Calculate fidelity using vectorized operations
-    fidelities = (np.abs(trace_terms)**2 + d) / (d * (d + 1))
-    
-    # Return the real parts to handle any negligible imaginary components
-    return np.real(fidelities)
+    fids = []
+
+    for U in U_array:
+        fid = (np.abs(np.trace(U_ideal.conj().T @ U))**2 +d)/(d*(d+1))
+        fids.append(fid)
+
+    return np.real(fids)
 
 
 def calculate_expectations(states, observable):
@@ -95,17 +105,22 @@ def calculate_unitaries(num_qubits, time, num_points, hamiltonian_func, **kwargs
     Returns:
     - tuple: (t, U) Time points and unitary operators
     """
+    solutions = []
     total_Us = []
-    
+
     for initial_state_index in range(2**num_qubits):
         initial_state = np.zeros(2**num_qubits, dtype=complex)
         initial_state[initial_state_index] = 1  # Initialize basis state
         
         t, y = evolve_state(initial_state, time, num_points, hamiltonian_func, **kwargs)
         
-        total_Us.append(y)
+        solutions.append(y)
 
-    return t, np.stack(total_Us, axis=1)
+    for i in range(len(t)):
+        U = np.array([solutions[j][i] for j in range(2**num_qubits)]).T  # Manually form columns
+        total_Us.append(U)
+
+    return t, np.array(total_Us)#np.stack(total_Us, axis=1)
 
 def rotate_state(state, theta, axis):
     """
