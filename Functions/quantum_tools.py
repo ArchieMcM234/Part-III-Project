@@ -181,6 +181,36 @@ def rotate_unitary(t, U, R_func):
 
     return transformed_U
 
+def qubit_frame_transformation(U, freq, t):
+    omega = 2 * np.pi * freq  # Convert to angular frequency
+    
+    # Define the rotation matrix R(t) and its conjugate transpose R†(t)
+    exp_factor = np.exp(-1j * omega * t / 2)
+    R_t = np.array([[exp_factor, 0], [0, np.conj(exp_factor)]])
+    
+    # Apply the transformation
+    transformed_U = R_t @ U    #so implicitly here we assume the initial state alignes with the iniital state in all frames
+    
+    return transformed_U
+
+def phase_boost_unitaries(U_array, freq, times, t_0=0):
+    omega = 2 * np.pi * freq  # Convert to angular frequency
+    
+
+    # Define the rotation matrix R(t) and its conjugate transpose R†(t)
+
+    transformed_Us = []
+    for t, U in zip(times, U_array):
+        R_t = np.array([[np.exp(-1j * omega * t / 2), 0], [0, np.exp(1j * omega * t / 2)]])
+        R_t_0_dag = np.array([[np.exp(1j * omega * t_0 / 2), 0], [0, np.exp(-1j * omega * t_0 / 2)]])
+        transformed_U = R_t @ U @ R_t_0_dag
+        transformed_Us.append(transformed_U)    
+
+    
+    return np.array(transformed_Us)
+
+
+
 def visualise_solution(t, y, static_vector=None):
     """
     Visualize quantum states on the Bloch sphere.
