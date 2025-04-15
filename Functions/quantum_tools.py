@@ -91,6 +91,37 @@ def evolve_state(initial_state, time, num_points, hamiltonian_func, rtol=1e-7, a
 
     return sol.t, sol.y.T
 
+def evolve_state_pulse(initial_state, time, num_points, hamiltonian_func, pulse_func, rtol=1e-7, atol=1e-7):
+    """
+    Evolve the system using the time-dependent Schrödinger equation.
+    
+    Parameters:
+    - initial_state (np.array): Initial state vector
+    - time (float): Total evolution time
+    - num_points (int): Number of time points
+    - hamiltonian_func (callable): Function that returns the Hamiltonian
+    - pulse_func (callable): Function that takes time t and returns dict of parameters
+    - rtol, atol (float): Solver tolerances
+    
+    Returns:
+    - tuple: (t, y) Time points and evolved state vectors
+    """
+    def tdse(t, psi):
+        params = pulse_func(t)
+        H = hamiltonian_func(**params, t=t)
+        return -1j * (H @ psi)
+
+    t_span = (0, time)
+    t_eval = np.linspace(0, time, num_points)
+    
+    sol = solve_ivp(tdse, t_span, initial_state, 
+                    t_eval=t_eval, 
+                    method='RK45',
+                    rtol=rtol, 
+                    atol=atol)
+
+    return sol.t, sol.y.T
+
 def calculate_unitaries(num_qubits, time, num_points, hamiltonian_func, **kwargs):
     """
     Calculate the unitary evolution operators for a quantum system.
@@ -208,6 +239,8 @@ def phase_boost_unitaries(U_array, freq, times, t_0=0):
 
     
     return np.array(transformed_Us)
+
+
 
 
 

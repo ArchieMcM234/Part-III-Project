@@ -220,3 +220,27 @@ def smart_rwa_multiple(natural_freqs, rabi_freq, driving_freq, modulation_freq, 
     
     return H + coupling * (np.kron(sigma_x, sigma_x) + np.kron(sigma_y, sigma_y) + np.kron(sigma_z, sigma_z))
 
+
+
+
+
+def ccd_second_frame(epsilon_m, rabi_freq, theta_m, phi_0, t):
+    """
+    Second-order rotating-frame Hamiltonian H_rot^(2)(t).
+    All frequencies should be in Hz.
+    """
+    epsilon_m = hz_to_radians(epsilon_m)
+    rabi_omega = hz_to_radians(rabi_freq)
+
+    cos_theta_m = np.cos(theta_m)
+    sin_theta_m = np.sin(theta_m)
+    cos_phi_mw = np.cos(phi_0)
+    sin_phi_mw = np.sin(phi_0)
+
+    cos_2omega_t = np.cos(2 * rabi_omega * t - theta_m)
+    sin_2omega_t = np.sin(2 * rabi_omega * t - theta_m)
+
+    H_static = (epsilon_m / 2) * (cos_theta_m * sigma_z + sin_theta_m * (-sin_phi_mw * sigma_x + cos_phi_mw * sigma_y))
+    H_dynamic = (epsilon_m / 2) * (cos_2omega_t * sigma_z + sin_2omega_t * (-sin_phi_mw * sigma_x + cos_phi_mw * sigma_y))
+
+    return H_static + H_dynamic
