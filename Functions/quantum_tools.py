@@ -153,6 +153,11 @@ def calculate_unitaries(num_qubits, time, num_points, hamiltonian_func, **kwargs
 
     return t, np.array(total_Us)#np.stack(total_Us, axis=1)
 
+
+
+
+# rotation functions - need to pair down
+###################################################################################################
 def rotate_state(state, theta, axis):
     """
     Rotate a quantum state by an angle theta around a given axis.
@@ -224,6 +229,10 @@ def qubit_frame_transformation(U, freq, t):
     
     return transformed_U
 
+
+# note that for time evolution unitaries we use different times on either side of U
+# you can think how you would rotate the states and then construct a unitary from that
+# because these unitaries span two bases
 def phase_boost_unitaries(U_array, freq, times, t_0=0):
     omega = 2 * np.pi * freq  # Convert to angular frequency
     
@@ -259,30 +268,36 @@ def visualise_solution(t, y, static_vector=None):
     x_expectation = np.real(calculate_expectations(y, sigma_x))
     y_expectation = np.real(calculate_expectations(y, sigma_y))
     z_expectation = np.real(calculate_expectations(y, sigma_z))
+    # Create figure
+    fig = plt.figure(figsize=(6, 4))
 
-    fig = plt.figure()
+    # Create 3D subplot
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_xlim([-1, 1])
-    ax.set_ylim([-1, 1])
-    ax.set_zlim([-1, 1])
-    ax.set_box_aspect([1, 1, 1])
-
-    def update(frame):
-        ax.cla()
-        ax.set_title("Animated Bloch Vector")
-        ax.set_xlim([-1, 1])
-        ax.set_ylim([-1, 1])
-        ax.set_zlim([-1, 1])
-        ax.set_box_aspect([1, 1, 1])
-
-        ax.quiver(0, 0, 0, x_expectation[frame], y_expectation[frame], z_expectation[frame], 
-                 color='r', arrow_length_ratio=0.1)
-        
-        if static_vector is not None:
-            ax.quiver(0, 0, 0, static_vector[0], static_vector[1], static_vector[2], 
-                     color='b', arrow_length_ratio=0.1)
-
-    ani = FuncAnimation(fig, update, frames=np.arange(0, len(t), 1), interval=50)
-    plt.close(fig)
     
-    return HTML(ani.to_jshtml())
+    # Plot state evolution
+    ax.plot(x_expectation, y_expectation, z_expectation, color='purple')
+    
+    # Draw Bloch sphere wireframe
+    u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
+    x = np.sin(v) * np.cos(u)
+    y = np.sin(v) * np.sin(u)
+    z = np.cos(v)
+    ax.plot_wireframe(x, y, z, color="lightgrey", alpha=0.2)
+    
+    # Add coordinate axes
+    ax.quiver(0, 0, 0, 1, 0, 0, color='r', arrow_length_ratio=0.05, label='x')
+    ax.quiver(0, 0, 0, 0, 1, 0, color='b', arrow_length_ratio=0.05, label='y')
+    ax.quiver(0, 0, 0, 0, 0, 1, color='g', arrow_length_ratio=0.05, label='z')
+
+    # Add static vector if provided
+    if static_vector is not None:
+        ax.quiver(0, 0, 0, static_vector[0], static_vector[1], static_vector[2], 
+                 color='blue', arrow_length_ratio=0.1)
+    ax.quiver(0, 0, 0, x_expectation[-1], y_expectation[-1], z_expectation[-1], arrow_length_ratio=0.1)
+    ax.set_title("Bloch Sphere Trajectory")
+    ax.set_xlim([-1.1, 1.1])
+    ax.set_ylim([-1.1, 1.1])
+    ax.set_zlim([-1.1, 1.1])
+
+    plt.tight_layout()
+    # return plt.gcf()
