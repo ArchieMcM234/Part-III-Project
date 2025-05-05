@@ -155,10 +155,6 @@ def calculate_unitaries(num_qubits, time, num_points, hamiltonian_func, **kwargs
 
 
 
-
-# rotation functions - need to pair down
-###################################################################################################
-
 def qubit_frame_transformation(U, freq, t):
     omega = 2 * np.pi * freq  # Convert to angular frequency
     
@@ -243,3 +239,6 @@ def visualise_solution(t, y, static_vector=None):
 
     plt.tight_layout()
     # return plt.gcf()
+
+
+
