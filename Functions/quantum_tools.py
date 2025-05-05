@@ -158,64 +158,6 @@ def calculate_unitaries(num_qubits, time, num_points, hamiltonian_func, **kwargs
 
 # rotation functions - need to pair down
 ###################################################################################################
-def rotate_state(state, theta, axis):
-    """
-    Rotate a quantum state by an angle theta around a given axis.
-    
-    Parameters:
-    - state (np.array): Quantum state vector
-    - theta (float): Rotation angle
-    - axis (np.array): Rotation axis (3-element array)
-    
-    Returns:
-    - np.array: Rotated state
-    """
-    axis = axis / np.linalg.norm(axis)
-    pauli_matrices = [sigma_x, sigma_y, sigma_z]
-    rot_mat = np.cos(theta / 2) * np.eye(2) - 1j * np.sin(theta / 2) * sum(axis[i] * pauli_matrices[i] for i in range(3))
-    return rot_mat @ state
-
-def rotate_system(t, states, theta_func, axis_func):
-    """
-    Rotate quantum states over time around specified axes.
-    
-    Parameters:
-    - t (array): Time points
-    - y (array): State vectors (shape: num_points x state_dimension)
-    - theta_func (callable): Function returning rotation angle at time t
-    - axis_func (callable): Function returning rotation axis at time t
-    
-    Returns:
-    - array: Rotated states
-    """
-    rotated_solution = np.zeros_like(states, dtype=complex)
-    
-    for i in range(len(t)):
-        theta = theta_func(t[i])
-        axis = axis_func(t[i])
-        rotated_solution[i] = rotate_state(states[i], theta, axis)
-    
-    return rotated_solution
-
-def rotate_unitary(t, U, R_func):
-    """
-    Transform unitary operators using a time-dependent rotation matrix.
-    
-    Parameters:
-    - t (array): Time points
-    - U (array): Unitary operators (shape: num_points x state_dimension x state_dimension)
-    - R_func (callable): Function returning rotation matrix at time t
-    
-    Returns:
-    - array: Transformed unitary operators
-    """
-    transformed_U = np.zeros_like(U, dtype=complex)
-
-    for i in range(len(t)):
-        R = R_func(t[i])  # Get the rotation matrix at time t[i]
-        transformed_U[i] = R @ U[i] @ R.conj().T  # Basis transformation
-
-    return transformed_U
 
 def qubit_frame_transformation(U, freq, t):
     omega = 2 * np.pi * freq  # Convert to angular frequency
@@ -285,9 +227,9 @@ def visualise_solution(t, y, static_vector=None):
     ax.plot_wireframe(x, y, z, color="lightgrey", alpha=0.2)
     
     # Add coordinate axes
-    ax.quiver(0, 0, 0, 1, 0, 0, color='r', arrow_length_ratio=0.05, label='x')
-    ax.quiver(0, 0, 0, 0, 1, 0, color='b', arrow_length_ratio=0.05, label='y')
-    ax.quiver(0, 0, 0, 0, 0, 1, color='g', arrow_length_ratio=0.05, label='z')
+    ax.quiver(0, 0, 0, 1, 0, 0, color='r', arrow_length_ratio=0.1, label='x')
+    ax.quiver(0, 0, 0, 0, 1, 0, color='b', arrow_length_ratio=0.1, label='y')
+    ax.quiver(0, 0, 0, 0, 0, 1, color='g', arrow_length_ratio=0.1, label='z')
 
     # Add static vector if provided
     if static_vector is not None:
