@@ -91,36 +91,7 @@ def evolve_state(initial_state, time, num_points, hamiltonian_func, rtol=1e-7, a
 
     return sol.t, sol.y.T
 
-def evolve_state_pulse(initial_state, time, num_points, hamiltonian_func, pulse_func, rtol=1e-7, atol=1e-7):
-    """
-    Evolve the system using the time-dependent Schrödinger equation.
-    
-    Parameters:
-    - initial_state (np.array): Initial state vector
-    - time (float): Total evolution time
-    - num_points (int): Number of time points
-    - hamiltonian_func (callable): Function that returns the Hamiltonian
-    - pulse_func (callable): Function that takes time t and returns dict of parameters
-    - rtol, atol (float): Solver tolerances
-    
-    Returns:
-    - tuple: (t, y) Time points and evolved state vectors
-    """
-    def tdse(t, psi):
-        params = pulse_func(t)
-        H = hamiltonian_func(**params, t=t)
-        return -1j * (H @ psi)
 
-    t_span = (0, time)
-    t_eval = np.linspace(0, time, num_points)
-    
-    sol = solve_ivp(tdse, t_span, initial_state, 
-                    t_eval=t_eval, 
-                    method='RK45',
-                    rtol=rtol, 
-                    atol=atol)
-
-    return sol.t, sol.y.T
 
 def calculate_unitaries(num_qubits, time, num_points, hamiltonian_func, **kwargs):
     """
@@ -153,6 +124,67 @@ def calculate_unitaries(num_qubits, time, num_points, hamiltonian_func, **kwargs
 
     return t, np.array(total_Us)#np.stack(total_Us, axis=1)
 
+def evolve_state_pulse(initial_state, time, num_points, hamiltonian_func, pulse_func, rtol=1e-7, atol=1e-7, **kwargs):
+    """
+    Evolve the system using the time-dependent Schrödinger equation.
+    
+    Parameters:
+    - initial_state (np.array): Initial state vector
+    - time (float): Total evolution time
+    - num_points (int): Number of time points
+    - hamiltonian_func (callable): Function that returns the Hamiltonian
+    - pulse_func (callable): Function that takes time t and returns dict of parameters
+    - rtol, atol (float): Solver tolerances
+    
+    Returns:
+    - tuple: (t, y) Time points and evolved state vectors
+    """
+    def tdse(t, psi):
+        params = pulse_func(t, **kwargs)
+        H = hamiltonian_func(**params, t=t)
+        return -1j * (H @ psi)
+
+    t_span = (0, time)
+    t_eval = np.linspace(0, time, num_points)
+    
+    sol = solve_ivp(tdse, t_span, initial_state, 
+                    t_eval=t_eval, 
+                    method='RK45',
+                    rtol=rtol, 
+                    atol=atol)
+
+    return sol.t, sol.y.T
+
+def calculate_unitaries_pulse(num_qubits, time, num_points, hamiltonian_func, pulse_func, **kwargs):
+    """
+    Calculate the unitary evolution operators for a quantum system with a time-dependent
+    Hamiltonian.
+    Parameters:
+    - num_qubits (int): Number of qubits in the system
+    - time (float): Total evolution time
+    - num_points (int): Number of time points
+    - hamiltonian_func (callable): Function that returns the Hamiltonian
+    - pulse_func (callable): Function that takes time t and returns dict of parameters
+    - **kwargs: Additional parameters passed to evolve_state
+    Returns:
+    - tuple: (t, U) Time points and unitary operators
+    """
+    solutions = []
+    total_Us = []
+
+    for initial_state_index in range(2**num_qubits):
+        initial_state = np.zeros(2**num_qubits, dtype=complex)
+        initial_state[initial_state_index] = 1  # Initialize basis state
+        
+        t, y = evolve_state_pulse(initial_state, time, num_points, hamiltonian_func, pulse_func, **kwargs)
+        
+        solutions.append(y)
+
+    for i in range(len(t)):
+        U = np.array([solutions[j][i] for j in range(2**num_qubits)]).T  # Manually form columns
+        total_Us.append(U)
+
+    return t, np.array(total_Us)#np.stack(total_Us, axis=1)
 
 
 def qubit_frame_transformation(U, freq, t):
@@ -193,15 +225,15 @@ def phase_boost_unitaries(U_array, freq, times, t_0=0):
 
 def visualise_solution(t, y, static_vector=None):
     """
-    Visualize quantum states on the Bloch sphere.
+    Plot quantum state evolution on the Bloch sphere.
     
-    Parameters:
-    - t (array): Time points
-    - y (array): State vectors (shape: num_points x state_dimension)
-    - static_vector (array, optional): Static vector to display
+    Args:
+        t (np.ndarray): Array of time points
+        y (np.ndarray): State vectors at each time point (shape: [n_points, 2])
+        static_vector (np.ndarray, optional): Fixed vector to show on sphere 
     
     Returns:
-    - HTML: Animation of Bloch sphere
+        None: Displays matplotlib plot of Bloch sphere trajectory
     """
     x_expectation = np.real(calculate_expectations(y, sigma_x))
     y_expectation = np.real(calculate_expectations(y, sigma_y))
