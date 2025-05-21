@@ -244,3 +244,25 @@ def ccd_second_frame(epsilon_m, rabi_freq, theta_m, phi_0, t):
     H_dynamic = (epsilon_m / 2) * (cos_2omega_t * sigma_z + sin_2omega_t * (-sin_phi_mw * sigma_x + cos_phi_mw * sigma_y))
 
     return H_static + H_dynamic
+
+
+
+def ccd_rwa_error_channels(natural_freq, rabi_freq, driving_freq, phase_freq, 
+            phi_0, epsilon_m, theta_m, t):
+    """
+    Time-independent Hamiltonian in the RWA for CCD.
+    All frequencies should be in Hz.
+    """
+    natural_omega = hz_to_radians(natural_freq)
+    rabi_omega = hz_to_radians(rabi_freq)
+    driving_omega = hz_to_radians(driving_freq)
+    phase_omega = hz_to_radians(phase_freq)
+    epsilon_m = hz_to_radians(epsilon_m)
+
+    delta = driving_omega - natural_omega
+    cos_phi_0 = np.cos(phi_0)
+    sin_phi_0 = np.sin(phi_0)
+    cos_phase = epsilon_m * (phase_omega / rabi_omega) * np.cos(phase_omega * t - theta_m)
+
+    H = -(delta / 2) * sigma_z + (rabi_omega / 2) * (cos_phi_0 * sigma_x + sin_phi_0 * sigma_y) + cos_phase * sigma_z
+    return H

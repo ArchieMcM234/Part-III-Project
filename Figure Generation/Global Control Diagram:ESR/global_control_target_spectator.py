@@ -82,43 +82,32 @@ times, states_spectator = qt.evolve_state(initial_state, evaluation_time, evalua
 x_s = np.real(qt.calculate_expectations(states_spectator, sigma_x))
 y_s = np.real(qt.calculate_expectations(states_spectator, sigma_y))
 z_s = np.real(qt.calculate_expectations(states_spectator, sigma_z))
-# ------------------------------------------------------------
-fig = plt.figure(figsize=(10, 10))  # square figure
-ax = fig.add_subplot(111, projection='3d', position=[0, 0, 1, 1])
 
-offset = 1.5 # sphere spacing
+from matplotlib.gridspec import GridSpec
+
+# Build figure with GridSpec
+fig = plt.figure(figsize=(10, 12))
+gs = GridSpec(2, 2, height_ratios=[4, 1], hspace=0.4, wspace=0.3)
+
+# Top: 3D Bloch spheres
+ax = fig.add_subplot(gs[0, :], projection='3d')
+offset = 1.5  # sphere spacing
 
 # Draw the two spheres
-ax.plot_surface(xs - offset, ys, zs,
-                color='lightgrey', alpha=0.15, linewidth=0)
-ax.plot_surface(xs + offset, ys, zs,
-                color='lightgrey', alpha=0.15, linewidth=0)
+ax.plot_surface(xs - offset, ys, zs, color='lightgrey', alpha=0.15, linewidth=0)
+ax.plot_surface(xs + offset, ys, zs, color='lightgrey', alpha=0.15, linewidth=0)
 
-# Plot trajectories (shifted by same offset)
+# Plot trajectories
 ax.plot(x_t - offset, y_t, z_t, color=steel_blue, label='Target')
 ax.plot(x_s + offset, y_s, z_s, color=plum, label='Spectator')
 
-# Arrow from target sphere center to its trajectory endpoint
-ax.quiver(
-    -offset, 0, 0,
-    x_t[-1], y_t[-1], z_t[-1],
-    length=1.0,
-    normalize=False,
-    arrow_length_ratio=0.2,
-    color=steel_blue
-)
+# Arrow to trajectory endpoints
+ax.quiver(-offset, 0, 0, x_t[-1], y_t[-1], z_t[-1],
+          length=1.0, normalize=False, arrow_length_ratio=0.2, color=steel_blue)
+ax.quiver(offset, 0, 0, x_s[-1], y_s[-1], z_s[-1],
+          length=1.0, normalize=False, arrow_length_ratio=0.2, color=plum)
 
-# Arrow from spectator sphere center to its trajectory endpoint
-ax.quiver(
-    offset, 0, 0,
-    x_s[-1], y_s[-1], z_s[-1],
-    length=1.0,
-    normalize=False,
-    arrow_length_ratio=0.2,
-    color=plum
-)
-
-# Add horizontal ESR antenna below both spheres
+# ESR antenna
 x_wire = np.linspace(-offset*1.5, offset*1.5, 200)
 y_wire = np.zeros_like(x_wire)
 z_wire = np.full_like(x_wire, -1.3)
@@ -130,58 +119,48 @@ for x0 in (-offset, 0, offset):
     y_loop = r * np.cos(theta)
     z_loop = z_wire[0] + r * np.sin(theta)
     x_loop = np.full_like(theta, x0)
-    ax.plot(x_loop, y_loop, z_loop,
-            color='red', linestyle='--', linewidth=1)
+    ax.plot(x_loop, y_loop, z_loop, color='red', linestyle='--', linewidth=1)
     th0 = np.pi/4
     ax.quiver(
         x0,
         r * np.cos(th0),
         z_wire[0] + r * np.sin(th0),
-        0,                # tangent x-component
-        -np.sin(th0),     # tangent y-component
-        np.cos(th0),      # tangent z-component
-        length=0.1,
-        normalize=True,
-        arrow_length_ratio=0.3,
-        color='red'
+        0, -np.sin(th0), np.cos(th0),
+        length=0.1, normalize=True, arrow_length_ratio=0.3, color='red'
     )
 
-# Add 3D labels for the qubits and antenna
-ax.text(
-    -offset,        # x position at left sphere center
-    1.2,            # y position above the sphere
-    0.8,            # z position near top of sphere
-    "Target Qubit",
-    color=steel_blue,
-    fontsize=16,
-    ha='center'
-)
-ax.text(
-    offset,         # x position at right sphere center
-    1.2,
-    0.8,
-    "Spectator Qubit",
-    color=plum,
-    fontsize=16,
-    ha='center'
-)
-ax.text(
-    0,              # centered along x under antenna
-    0,
-    z_wire[0] - 0.4,# just below the antenna line
-    "ESR antenna",
-    color='red',
-    fontsize=16,
-    ha='center'
-)
+# Labels
+ax.text(-offset, 1.2, 0.8, "Target Qubit", color=steel_blue, fontsize=16, ha='center')
+ax.text(offset, 1.2, 0.8, "Spectator Qubit", color=plum, fontsize=16, ha='center')
+ax.text(0, 0, z_wire[0] - 0.4, "ESR antenna", color='red', fontsize=16, ha='center')
 
-
-# Equal axis scaling keeps the spheres round
-ax.set_box_aspect((1, 1, 1))  # Matplotlib ≥3.3
+# Aspect and limits
+ax.set_box_aspect((1, 1, 1))
 ax.set_xlim(-2, 2)
 ax.set_ylim(-2, 2)
 ax.set_zlim(-2, 2)
-
 ax.set_axis_off()
 
+# Bottom left: Target energy splitting
+ax_e1 = fig.add_subplot(gs[1, 0])
+E0, E1 = 0, 2
+ax_e1.hlines([E0, E1], 0.2, 0.8, color=steel_blue, linewidth=2)
+ax_e1.annotate("", (0.5, E1), (0.5, E0),
+               arrowprops=dict(arrowstyle="<->", color=steel_blue))
+ax_e1.text(0.5, (E0 + E1) / 2, r'$\omega_0$', ha='center', va='bottom', color=steel_blue)
+ax_e1.set_xticks([]); ax_e1.set_yticks([]); ax_e1.set_ylim(-0.5, 2.5)
+ax_e1.set_title("Target", color=steel_blue)
+
+# Bottom right: Spectator energy splitting
+ax_e2 = fig.add_subplot(gs[1, 1])
+E0s, E1s = 0, 2.6
+ax_e2.hlines([E0s, E1s], 0.2, 0.8, color=plum, linewidth=2)
+ax_e2.annotate("", (0.5, E1s), (0.5, E0s),
+               arrowprops=dict(arrowstyle="<->", color=plum))
+ax_e2.text(0.5, (E0s + E1s) / 2, r'$\omega_0 + \delta$', ha='center', va='bottom', color=plum)
+ax_e2.set_xticks([]); ax_e2.set_yticks([]); ax_e2.set_ylim(-0.5, 3.1)
+ax_e2.set_title("Spectator", color=plum)
+
+plt.tight_layout()
+fig.subplots_adjust(bottom=0.1)
 plt.show()
