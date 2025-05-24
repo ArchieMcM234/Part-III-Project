@@ -220,6 +220,21 @@ def phase_boost_unitaries(U_array, freq, times, t_0=0):
     return np.array(transformed_Us)
 
 
+def virtual_z(Us, theta):
+    """
+    Apply a virtual Z rotation to the unitary U. takes parameter theta that should be an angle
+    again these are evolution unitaries so we if we think of them as a matrix of the final states we dont need to to conjugated transformations
+    """
+    R = np.array([[np.exp(-1j * theta / 2), 0], [0, np.exp(1j * theta / 2)]])
+    transformed_Us = []
+    for U in Us:
+        transformed_U = R @ U @ R.conj().T
+        transformed_Us.append(transformed_U)
+
+
+    
+    return transformed_Us
+
 
 
 
